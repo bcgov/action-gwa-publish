@@ -1,9 +1,10 @@
-name: Pull Request Closed
+name: Merge to Main
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
+    branches:
+      - main
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,14 +13,11 @@ concurrency:
 jobs:
   # If merged into main, then handle any image promotions
   release:
-    name: Action release
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    name: Action release    
     runs-on: ubuntu-22.04    
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
+        
       - name: Backing up Changelog
         run: |
             mv CHANGELOG.md OLD.CHANGELOG.md

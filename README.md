@@ -8,10 +8,6 @@
 
 This action publishes an api through the BC Government Gateway gateway.
 
-This is useful in CI/CD pipelines where you need to access a secret, get a vault token or anything vault related.
-
-This tool is currently based on the existing documentation provided by 1team.
-
 # Usage
 
 ```yaml

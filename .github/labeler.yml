@@ -1,8 +1,11 @@
 actions:
-  - .github/*
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
 
 source:
-  - action.yml
+  - changed-files:
+      - any-glob-to-any-file: 'action.yml'
 
 documentation:
-  - *.md
+  - changed-files:
+      - any-glob-to-any-file: '*.md'

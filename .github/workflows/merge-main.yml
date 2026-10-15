@@ -4,17 +4,26 @@ on:
   push:
     branches:
       - main
-
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force a release even if conventional changelog is empty'
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   # If merged into main, then handle any image promotions
   release:
     name: Action release    
     runs-on: ubuntu-26.04    
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
         
@@ -24,7 +33,7 @@ jobs:
             touch CHANGELOG.md
 
       - name: Conventional Changelog Update
-        uses: TriPSs/conventional-changelog-action@v6
+        uses: TriPSs/conventional-changelog-action@ee43def3241429afddab215ba89090cbf64fb45c # v6
         id: changelog
         with:
           github-token: ${{ github.token }}
@@ -32,6 +41,7 @@ jobs:
           skip-version-file: 'true'
           skip-commit: 'true'
           git-push: 'false'
+          skip-on-empty: ${{ github.event_name != 'workflow_dispatch' || !inputs.force_release }}
       
       - name: Merging Changelog
         if: ${{ !steps.changelog.outputs.skipped }}
@@ -40,7 +50,7 @@ jobs:
             cat RELEASE.md OLD.CHANGELOG.md > CHANGELOG.md
       
       - name: Update resources
-        uses: test-room-7/action-update-file@v2.1.0
+        uses: test-room-7/action-update-file@6b8249d09d5926fbae288c0bb640757f09ec7ce0 # v2.1.0
         if: ${{ !steps.changelog.outputs.skipped }}
         with:
           file-path: CHANGELOG.md
@@ -48,7 +58,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         if: ${{ !steps.changelog.outputs.skipped }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,3 +67,17 @@ jobs:
           tag_name: ${{ steps.changelog.outputs.tag }}
           name: ${{ steps.changelog.outputs.tag }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
+          generate_release_notes: true
+
+      - name: Update Floating Major Tag
+        if: ${{ !steps.changelog.outputs.skipped }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TAG="${{ steps.changelog.outputs.tag }}"
+          MAJOR_TAG="${TAG%%.*}"
+          if [ -n "$MAJOR_TAG" ] && [ "$MAJOR_TAG" != "$TAG" ]; then
+            echo "Updating floating major tag: $MAJOR_TAG -> $TAG"
+            git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG to $TAG"
+            git push origin "$MAJOR_TAG" --force
+          fi

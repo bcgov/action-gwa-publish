@@ -7,6 +7,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   pr-validation:
     name: Pull Request Validation
@@ -24,7 +26,7 @@ jobs:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Conventional Label
-        uses: bcoe/conventional-release-labels@v1
+        uses: bcoe/conventional-release-labels@886f696738527c7be444262c327c89436dfb95a8 # v1
         continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,7 +40,7 @@ jobs:
 
       - name: Conventional Changelog Update
         continue-on-error: true
-        uses: TriPSs/conventional-changelog-action@v6
+        uses: TriPSs/conventional-changelog-action@ee43def3241429afddab215ba89090cbf64fb45c # v6
         id: changelog
         with:
           github-token: ${{ github.token }}
@@ -55,7 +57,7 @@ jobs:
 
       - name: Comment PR
         continue-on-error: true
-        uses: thollander/actions-comment-pull-request@v3
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         with:
           message: |
@@ -67,8 +69,8 @@ jobs:
           
   retags:
     permissions:
-      packages: write
-    runs-on: ubuntu-26.04    
+      contents: read
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -80,3 +82,30 @@ jobs:
           client_secret: ${{ secrets.GWA_CLIENT_SECRET }}    
           file: .github/sample.gwa.yml
           production: "false"
+
+  # ==========================================================================
+  # WARNING: This job acts as the required merge gate for this workflow.
+  # If you add a new job to this workflow, you MUST add its ID to the 'needs'
+  # array below, otherwise its failure or cancellation will not block the PR!
+  # ==========================================================================
+  results:
+    name: PR Results
+    needs: [pr-validation, retags]
+    if: always()
+    permissions: {}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 1
+    steps:
+      - name: Log Job Results Context
+        run: |
+          echo "=== Upstream Job Statuses ==="
+          echo '${{ toJson(needs) }}'
+
+      - name: Evaluate Overall Status
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "❌ Critical Check Failure: At least one required job has failed or was cancelled."
+          exit 1
+
+      - name: Success Message
+        run: echo "✅ All critical checks passed or were intentionally skipped!"

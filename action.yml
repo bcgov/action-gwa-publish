@@ -22,7 +22,7 @@ inputs:
   ### Typical / recommended
   production:
     description: Set the environment to be used as the production environment
-    value: "true"
+    default: "true"
     
 runs:
   using: composite

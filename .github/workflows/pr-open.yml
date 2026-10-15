@@ -7,6 +7,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   pr-validation:
     name: Pull Request Validation
@@ -90,6 +92,7 @@ jobs:
     name: PR Results
     needs: [pr-validation, retags]
     if: always()
+    permissions: {}
     runs-on: ubuntu-26.04
     timeout-minutes: 1
     steps:

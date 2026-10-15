@@ -68,7 +68,7 @@ jobs:
   retags:
     permissions:
       contents: read
-    runs-on: ubuntu-24.04    
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -90,7 +90,7 @@ jobs:
     name: PR Results
     needs: [pr-validation, retags]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     steps:
       - name: Log Job Results Context

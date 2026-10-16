@@ -10,6 +10,24 @@ concurrency:
 permissions: {}
 
 jobs:
+  check:
+    name: Check Triggers
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.diff.outputs.triggered }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: diff
+        uses: bcgov/actions/diff-triggers@79aefe3a7abb2d0d00b1b3ea4cfbf12727a10638 # v0.9.0
+        with:
+          triggers: |
+            .
+            !*.md
+
   pr-validation:
     name: Pull Request Validation
     runs-on: ubuntu-latest
@@ -68,6 +86,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
   retags:
+    needs: check
+    if: needs.check.outputs.code == 'true'
     permissions:
       contents: read
     runs-on: ubuntu-26.04
@@ -90,22 +110,12 @@ jobs:
   # ==========================================================================
   results:
     name: PR Results
-    needs: [pr-validation, retags]
+    needs: [check, pr-validation, retags]
     if: always()
     permissions: {}
     runs-on: ubuntu-26.04
     timeout-minutes: 1
     steps:
-      - name: Log Job Results Context
-        run: |
-          echo "=== Upstream Job Statuses ==="
-          echo '${{ toJson(needs) }}'
-
-      - name: Evaluate Overall Status
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: |
-          echo "❌ Critical Check Failure: At least one required job has failed or was cancelled."
-          exit 1
-
-      - name: Success Message
-        run: echo "✅ All critical checks passed or were intentionally skipped!"
+      - uses: bcgov/actions/workflow-results@79aefe3a7abb2d0d00b1b3ea4cfbf12727a10638 # v0.9.0
+        with:
+          needs: ${{ toJson(needs) }}
